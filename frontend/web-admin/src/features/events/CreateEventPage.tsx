@@ -28,14 +28,14 @@ export function CreateEventPage() {
     }
 
     try {
-      const created = await createEvent({
+      await createEvent({
         ...values,
         name: values.name.trim(),
         venue: values.venue.trim(),
         date: new Date(values.date).toISOString(),
         zones: values.zones.map((zone) => ({ ...zone, name: zone.name.trim() })),
       }, token)
-      setNotice({ kind: 'success', message: `Evento registrado correctamente. ID: ${created.id}` })
+      setNotice({ kind: 'success', message: 'Evento registrado correctamente.' })
       form.reset(emptyEventForm)
     } catch (error) {
       handleApiError(error, form.setError, setNotice)

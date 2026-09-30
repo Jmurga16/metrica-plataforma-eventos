@@ -4,7 +4,7 @@ Solución al [reto técnico de Líder Técnico](https://github.com/desarrollo-ac
 
 1. **Arquitectura** completa de una plataforma de venta de tickets para eventos online (microservicios, eventos, AWS).
 2. **Backlog y roadmap** para una primera versión en 6 meses con Scrum.
-3. **MVP técnico:** 2 APIs .NET comunicadas por RabbitMQ, PostgreSQL, Redis y una pantalla React para registrar eventos.
+3. **MVP técnico:** 2 APIs .NET comunicadas por RabbitMQ, PostgreSQL, Redis y un panel React para registrar, listar y consultar eventos.
 
 ## Entregables
 
@@ -48,11 +48,11 @@ flowchart LR
 | Caché | Redis, cache-aside en `GET /events` con invalidación por versión |
 | Seguridad | JWT con roles (`Admin` crea, `User` lee), ProblemDetails sin detalles internos, rate limiting, logs sin datos sensibles |
 | Observabilidad | Serilog JSON en ambas APIs, `X-Correlation-Id` propagado en `EventCreated` y logs del consumidor; health checks de API, BD y SMTP |
-| Frontend | React 19 + TypeScript + Vite + Tailwind, React Hook Form + Zod |
+| Frontend | React 19 + TypeScript + Vite + Tailwind, navegación de administración, listado/detalle de eventos y formulario con React Hook Form + Zod |
 
 ## Estado del MVP
 
-El flujo principal está operativo: formulario → `POST /events` → PostgreSQL + outbox → RabbitMQ → NotificationService → PostgreSQL → correo en Mailpit. También están verificados JWT por roles, validación, caché Redis (`MISS` → `HIT`), migraciones automáticas y health checks.
+El flujo principal está operativo: formulario → `POST /events` → PostgreSQL + outbox → RabbitMQ → NotificationService → PostgreSQL → correo en Mailpit. El panel también consume `GET /events` y `GET /events/{id}` para mostrar el listado y el detalle sin exponer identificadores técnicos al usuario. Están verificados JWT por roles, validación, caché Redis (`MISS` → `HIT`), migraciones automáticas y health checks.
 
 El cierre técnico incluye pruebas de integración con Testcontainers para EventService,
 pruebas reales de idempotencia/reintentos/DLQ, pruebas HTTP de NotificationService y CI para backend y frontend.
@@ -72,7 +72,7 @@ docker compose ps          # todos los servicios en estado healthy
 
 | Recurso | URL |
 |---|---|
-| Frontend (Registrar Evento) | http://localhost:3000 |
+| Frontend (listar, consultar y registrar eventos) | http://localhost:3000 |
 | api-event (Scalar / OpenAPI) | http://localhost:5001/scalar/v1 |
 | api-notifications (OpenAPI JSON) | http://localhost:5002/openapi/v1.json |
 | RabbitMQ Management | http://localhost:15672 |
@@ -120,6 +120,19 @@ Para demostrar únicamente idempotencia, reintentos y DLQ de forma reproducible:
 ```
 
 En Linux/macOS se puede ejecutar `./scripts/verify-messaging-reliability.sh`.
+
+## Cómo entregar
+
+El enunciado solicita subir todos los entregables a un repositorio en **GitHub, GitLab o Bitbucket**. No exige enviar un archivo ZIP. Antes de compartir el enlace del repositorio:
+
+```bash
+git status
+git add README.md docs frontend
+git commit -m "feat(frontend): add event listing and detail views"
+git push origin main
+```
+
+Después del `push`, comprobar que el workflow de CI esté en verde y compartir la URL raíz del repositorio. El evaluador encontrará desde este README los documentos de arquitectura, el backlog/roadmap, el código y las instrucciones reproducibles de ejecución.
 
 ## Estructura del repositorio
 

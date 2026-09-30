@@ -1,6 +1,6 @@
 # Especificación técnica del MVP
 
-> Guía de construcción del MVP del reto: **2 APIs .NET** comunicadas de forma asíncrona por **RabbitMQ**, persistencia en **PostgreSQL**, caché **Redis** y una **pantalla React** para registrar eventos.
+> Guía de construcción del MVP del reto: **2 APIs .NET** comunicadas de forma asíncrona por **RabbitMQ**, persistencia en **PostgreSQL**, caché **Redis** y un **panel React** para registrar, listar y consultar eventos.
 > Contexto de arquitectura: [../architecture.md](../architecture.md) (§15) · Decisiones: [../decisiones-arquitectura.md](../decisiones-arquitectura.md) · Plan de 2 días: [plan-de-ejecucion.md](plan-de-ejecucion.md).
 
 ## Índice
@@ -15,7 +15,7 @@
 9. [Persistencia](#9-persistencia)
 10. [Seguridad](#10-seguridad)
 11. [Observabilidad](#11-observabilidad)
-12. [Frontend: pantalla “Registrar Evento”](#12-frontend-pantalla-registrar-evento)
+12. [Frontend: administración de eventos](#12-frontend-administración-de-eventos)
 13. [Infraestructura local](#13-infraestructura-local)
 14. [Estrategia de pruebas](#14-estrategia-de-pruebas)
 15. [Definition of Done del MVP](#15-definition-of-done-del-mvp)
@@ -627,17 +627,20 @@ dotnet ef migrations script --idempotent \
 
 ---
 
-## 12. Frontend: pantalla “Registrar Evento”
+## 12. Frontend: administración de eventos
 
 ### 12.1 Comportamiento
 
 | Elemento | Especificación |
 |---|---|
 | Sesión de demo | Selector “Rol de demo: Admin / User” que llama a `POST /auth/dev-token` y guarda el token **en memoria**. Alternativa: `VITE_DEMO_TOKEN` fijo |
+| Navegación | Menú en el encabezado con acceso a “Eventos” y “Registrar” |
+| Listado | Consume `GET /events`; muestra estado, fecha, lugar y cantidad de zonas, con estados de carga, vacío y error |
+| Detalle | “Ver detalle” consume `GET /events/{id}` y muestra los datos del evento y sus zonas. Los identificadores se conservan internamente y no se presentan al usuario |
 | Formulario | Nombre, Fecha y hora (`datetime-local` → ISO-8601 con la zona del navegador), Lugar, Zonas (lista editable: agregar y quitar filas con nombre, precio y capacidad). Empieza con 1 zona vacía |
 | Validación | Zod + React Hook Form (`useFieldArray`), con las mismas reglas de §5.1. Errores bajo cada campo y `aria-invalid` |
 | Guardar | Botón deshabilitado y con *spinner* mientras envía; evita el doble envío |
-| Éxito (201) | Alerta de éxito con el id del evento; se limpia el formulario |
+| Éxito (201) | Alerta “Evento registrado correctamente.” sin exponer el identificador; se limpia el formulario |
 | 400 | Los `errors` del ProblemDetails se asignan a los campos (`zones[1].capacity` → fila 2) |
 | 401 / 403 | “Tu sesión expiró” / “No tienes permisos para registrar eventos (rol requerido: Admin)” |
 | 429 | “Demasiadas solicitudes, intenta en N segundos” |
@@ -651,14 +654,15 @@ frontend/web-admin/
 ├── src/
 │   ├── api/
 │   │   ├── httpClient.ts          # fetch + Bearer + X-Correlation-Id + parseo de ProblemDetails
-│   │   └── eventsApi.ts           # createEvent(), getEvents()
+│   │   └── eventsApi.ts           # createEvent(), getEvents(), getEvent()
 │   ├── auth/
 │   │   └── DemoAuthProvider.tsx   # token en memoria, selector de rol
 │   ├── features/events/
 │   │   ├── CreateEventPage.tsx
+│   │   ├── EventsPage.tsx
 │   │   ├── ZonesFieldArray.tsx
-│   │   └── eventSchema.ts         # esquema Zod (reglas de §5.1)
-│   ├── components/ui/             # Button, Input, Alert, Spinner
+│   │   ├── eventSchema.ts         # esquema Zod (reglas de §5.1)
+│   │   └── *.test.tsx             # pruebas de registro, listado y detalle
 │   ├── App.tsx
 │   └── main.tsx
 ├── .env.example                   # VITE_API_BASE_URL=http://localhost:5001
@@ -682,7 +686,7 @@ frontend/web-admin/
 | `mailpit` | `axllent/mailpit` | 1025 (SMTP), 8025 (UI) | — |
 | `api-event` | build `src/EventService/Dockerfile` (contexto: raíz del repo) | 5001 → 8080 | db, rabbitmq, redis |
 | `api-notifications` | build `src/NotificationService/Dockerfile` (contexto: raíz del repo) | 5002 → 8080 | db, rabbitmq, mailpit |
-| `web` | build `frontend/web-admin/Dockerfile` | 3000 → 80 | api-event |
+| `web` | build `frontend/web-admin/Dockerfile` | 3000 → 8080 | api-event |
 | `jaeger` *(perfil `observability`)* | `jaegertracing/jaeger` | 16686, 4317 | — |
 
 ### 13.2 URLs locales
@@ -755,7 +759,8 @@ ENTRYPOINT ["dotnet", "EventService.Api.dll"]
 | T15 | Frontend (Vitest + RTL) | Enviar con capacidad 0 | Error visible, **no** llama a la API |
 | T16 | Frontend | La API responde 400 con `errors` | Errores mostrados en los campos correctos |
 | T17 | Frontend | Envío en curso | Botón deshabilitado + indicador de carga |
-| T18 | E2E manual | Guion de §16 con `docker compose` | Correo visible en Mailpit |
+| T18 | Frontend | Seleccionar un evento del listado | Ejecuta `GET /events/{id}`, muestra el detalle y no presenta identificadores técnicos |
+| T19 | E2E manual | Guion de §16 con `docker compose` | Correo visible en Mailpit |
 
 **Comandos:** `dotnet test` en la raíz y `npm test` en `frontend/web-admin`.
 
@@ -786,9 +791,9 @@ El recorrido manual complementario es:
 | # | Paso | Qué demuestra |
 |---|---|---|
 | 1 | `docker compose up -d --build` y `docker compose ps` (todo `healthy`) | Infraestructura reproducible |
-| 2 | En http://localhost:3000 elegir el rol **Admin**, completar el formulario con 2 zonas y guardar | Frontend, JWT, validación, 201 |
+| 2 | En http://localhost:3000 elegir el rol **Admin**, abrir “Registrar”, completar el formulario con 2 zonas y guardar | Frontend, navegación, JWT, validación, 201 |
 | 3 | Abrir Mailpit (http://localhost:8025): llega el correo con el detalle | Consumo asíncrono + MailKit |
-| 4 | `GET /events` dos veces: `X-Cache: MISS` y luego `HIT`. Crear otro evento → `MISS` | Caché Redis + invalidación |
+| 4 | Abrir “Eventos” y consultar el detalle. Complementar con `GET /events` dos veces: `X-Cache: MISS` y luego `HIT`; crear otro evento → `MISS` | Listado/detalle, caché Redis + invalidación |
 | 5 | RabbitMQ UI: exchange `event-created.v1` → cola `notifications-event-created` | Topología de mensajería |
 | 6 | Reenviar el mismo mensaje (*Publish message* en la UI con el mismo `messageId`): el log dice “duplicado ignorado” y no hay correo nuevo | **Idempotencia** |
 | 7 | `docker compose stop mailpit` y crear un evento: el log muestra 3 reintentos, el mensaje queda en `_error` y el estado es `Failed` | **Reintentos + DLQ** |

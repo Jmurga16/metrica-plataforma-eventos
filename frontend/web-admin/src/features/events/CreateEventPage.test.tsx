@@ -21,6 +21,7 @@ function renderApp() {
 async function loginAndFill(role: 'Admin' | 'User' = 'Admin') {
   const user = userEvent.setup()
   await user.selectOptions(screen.getByLabelText('Rol de demo'), role)
+  await user.click(screen.getByRole('button', { name: 'Registrar' }))
   await waitFor(() => expect(screen.getByText(`Rol activo: ${role}`)).toBeInTheDocument())
   await user.type(screen.getByLabelText('Nombre del evento'), 'Concierto de prueba')
   await user.type(screen.getByLabelText('Fecha y hora'), '2099-12-20T20:00')
@@ -72,12 +73,13 @@ describe('CreateEventPage', () => {
     expect(await screen.findByRole('button', { name: 'Registrando…' })).toBeDisabled()
   })
 
-  it('muestra el identificador y limpia el formulario después de 201', async () => {
+  it('confirma el registro sin exponer el identificador y limpia el formulario después de 201', async () => {
     renderApp()
     const user = await loginAndFill()
     await user.click(screen.getByRole('button', { name: 'Registrar evento' }))
 
-    expect(await screen.findByText(/evt-123/)).toBeInTheDocument()
+    expect(await screen.findByText('Evento registrado correctamente.')).toBeInTheDocument()
+    expect(screen.queryByText(/evt-123/)).not.toBeInTheDocument()
     expect(screen.getByLabelText('Nombre del evento')).toHaveValue('')
   })
 

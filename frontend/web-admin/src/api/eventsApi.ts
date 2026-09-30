@@ -12,12 +12,36 @@ export interface CreatedEvent {
   name?: string
 }
 
+export interface EventZone {
+  id: string
+  name: string
+  price: number
+  capacity: number
+}
+
+export interface EventSummary {
+  id: string
+  name: string
+  date: string
+  venue: string
+  status: string
+  zones: EventZone[]
+}
+
 export function createEvent(payload: CreateEventRequest, token: string) {
   return apiRequest<CreatedEvent>('/events', {
     method: 'POST',
     token,
     body: JSON.stringify(payload),
   })
+}
+
+export function getEvents(token: string, page = 1, pageSize = 20) {
+  return apiRequest<EventSummary[]>(`/events?page=${page}&pageSize=${pageSize}`, { token })
+}
+
+export function getEvent(id: string, token: string) {
+  return apiRequest<EventSummary>(`/events/${encodeURIComponent(id)}`, { token })
 }
 
 export async function requestDemoToken(role: 'Admin' | 'User') {
