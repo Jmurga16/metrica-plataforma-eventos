@@ -108,6 +108,21 @@ npm run lint
 npm run build
 ```
 
+Las pruebas que levantan PostgreSQL, Redis y RabbitMQ mediante Testcontainers se habilitan de forma explícita:
+
+```powershell
+$env:RUN_INFRASTRUCTURE_TESTS='true'
+dotnet test Metrica.slnx -c Release
+```
+
+Para demostrar únicamente idempotencia, reintentos y DLQ de forma reproducible:
+
+```powershell
+.\scripts\verify-messaging-reliability.ps1
+```
+
+En Linux/macOS se puede ejecutar `./scripts/verify-messaging-reliability.sh`.
+
 ## Estructura del repositorio
 
 ```text

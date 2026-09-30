@@ -5,7 +5,7 @@
 
 ## Estado al 30 de septiembre de 2026
 
-El flujo principal del MVP, la infraestructura Compose, ambas APIs y el frontend están implementados. Las pruebas actuales pasan y el recorrido evento → outbox → RabbitMQ → notificación → Mailpit fue validado desde un clon limpio. Quedan como cierre prioritario las pruebas automatizadas de integración de EventService y la demostración reproducible de reintentos/DLQ. OpenTelemetry/Jaeger y el seed son mejoras opcionales.
+El flujo principal del MVP, la infraestructura Compose, ambas APIs y el frontend están implementados. Las pruebas actuales pasan y el recorrido evento → outbox → RabbitMQ → notificación → Mailpit fue validado desde un clon limpio. Las pruebas automatizadas de infraestructura cubren EventService, idempotencia, reintentos y DLQ. OpenTelemetry/Jaeger y el seed permanecen como mejoras opcionales fuera del cierre del reto.
 
 ## Principios
 1. **Primero el esqueleto que camina:** el flujo completo mínimo (POST → cola → consumidor → BD → correo) antes de refinar cualquier parte.

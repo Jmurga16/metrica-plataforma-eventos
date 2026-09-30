@@ -765,7 +765,7 @@ ENTRYPOINT ["dotnet", "EventService.Api.dll"]
 
 - [x] Desde un clon limpio: `cp .env.example .env` y `docker compose up -d --build` levantan todo **sin pasos manuales adicionales**.
 - [x] El flujo de punta a punta funciona: formulario → 201 → mensaje en RabbitMQ → registro en `notifications_db` → correo en Mailpit.
-- [ ] La idempotencia, los reintentos y la DLQ se demuestran con el guion de §16.
+- [x] La idempotencia, los reintentos y la DLQ se demuestran con pruebas de infraestructura automatizadas y con el guion de §16.
 - [x] `dotnet test` y `npm test` pasan.
 - [x] El README tiene instrucciones de ejecución, migraciones, estrategia de datos iniciales, URLs y credenciales de demo.
 - [x] No hay secretos reales en el repositorio; `.env` está en `.gitignore`.
@@ -775,6 +775,13 @@ ENTRYPOINT ["dotnet", "EventService.Api.dll"]
 ---
 
 ## 16. Guion de demostración
+
+La verificación automatizada y repetible del bloque de mensajería se ejecuta con
+`./scripts/verify-messaging-reliability.sh` o `./scripts/verify-messaging-reliability.ps1`.
+La suite levanta PostgreSQL y RabbitMQ aislados y comprueba duplicados, recuperación tras un fallo
+transitorio, cuatro intentos, publicación de `Fault<EventCreated>`, estado `Failed` y cola `_error`.
+
+El recorrido manual complementario es:
 
 | # | Paso | Qué demuestra |
 |---|---|---|
