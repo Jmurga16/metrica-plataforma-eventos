@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -39,6 +40,7 @@ public static class ApiServiceCollectionExtensions
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.AddPolicy(RateLimitPolicies.Writes, context => RateLimitPartition.GetFixedWindowLimiter(
                 context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                    ?? context.User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                     ?? context.Connection.RemoteIpAddress?.ToString()
                     ?? "anonymous",
                 _ => new FixedWindowRateLimiterOptions

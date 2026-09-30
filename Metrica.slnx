@@ -18,6 +18,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/EventService.Domain.Tests/EventService.Domain.Tests.csproj" />
+    <Project Path="tests/EventService.IntegrationTests/EventService.IntegrationTests.csproj" />
     <Project Path="tests/NotificationService.IntegrationTests/NotificationService.IntegrationTests.csproj" />
     <Project Path="tests/NotificationService.UnitTests/NotificationService.UnitTests.csproj" />
   </Folder>

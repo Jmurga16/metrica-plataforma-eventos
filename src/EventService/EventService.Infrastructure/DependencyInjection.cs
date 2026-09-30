@@ -30,7 +30,11 @@ public static class DependencyInjection
             });
             bus.UsingRabbitMq((context, cfg) =>
             {
-                cfg.Host(configuration["RabbitMq:Host"] ?? "localhost", "/", host =>
+                var rabbitMqHost = configuration["RabbitMq:Host"] ?? "localhost";
+                var rabbitMqPort = ushort.TryParse(configuration["RabbitMq:Port"], out var configuredPort)
+                    ? configuredPort
+                    : (ushort)5672;
+                cfg.Host(rabbitMqHost, rabbitMqPort, "/", host =>
                 {
                     host.Username(configuration["RabbitMq:User"] ?? "guest");
                     host.Password(configuration["RabbitMq:Password"] ?? "guest");
