@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Serilog;
+using Serilog.Context;
 using Serilog.Formatting.Compact;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -71,7 +72,10 @@ app.Use(async (context, next) =>
     if (!Guid.TryParse(correlationId, out var parsed)) parsed = Guid.NewGuid();
     context.Items["CorrelationId"] = parsed;
     context.Response.Headers["X-Correlation-Id"] = parsed.ToString();
-    await next();
+    using (LogContext.PushProperty("correlationId", parsed))
+    {
+        await next();
+    }
 });
 app.UseSerilogRequestLogging();
 app.UseCors();

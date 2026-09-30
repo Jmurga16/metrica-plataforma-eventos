@@ -6,8 +6,16 @@ using Microsoft.IdentityModel.Tokens;
 using NotificationService.Application;
 using NotificationService.Infrastructure;
 using NotificationService.Infrastructure.Persistence;
+using Serilog;
+using Serilog.Context;
+using Serilog.Formatting.Compact;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((_, configuration) => configuration
+    .Enrich.FromLogContext()
+    .Enrich.WithProperty("service", "notification-service")
+    .WriteTo.Console(new CompactJsonFormatter()));
 
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
@@ -39,6 +47,18 @@ builder.Services.AddAuthorizationBuilder()
 var app = builder.Build();
 
 app.UseExceptionHandler();
+app.Use(async (context, next) =>
+{
+    var header = context.Request.Headers["X-Correlation-Id"].FirstOrDefault();
+    var correlationId = Guid.TryParse(header, out var parsed) ? parsed : Guid.NewGuid();
+    context.Response.Headers["X-Correlation-Id"] = correlationId.ToString();
+
+    using (LogContext.PushProperty("correlationId", correlationId))
+    {
+        await next();
+    }
+});
+app.UseSerilogRequestLogging();
 
 if (app.Environment.IsDevelopment())
 {

@@ -1,12 +1,15 @@
 using Contracts.Events;
 using MassTransit;
+using Microsoft.Extensions.Logging;
 using NotificationService.Application;
 
 namespace NotificationService.Infrastructure.Messaging;
 
-public sealed class EventCreatedConsumer(EventNotificationProcessor processor) : IConsumer<EventCreated>
+public sealed class EventCreatedConsumer(
+    EventNotificationProcessor processor,
+    ILogger<EventCreatedConsumer> logger) : IConsumer<EventCreated>
 {
-    public Task Consume(ConsumeContext<EventCreated> context)
+    public async Task Consume(ConsumeContext<EventCreated> context)
     {
         var message = context.Message;
         var notification = new EventCreatedNotification(
@@ -23,7 +26,14 @@ public sealed class EventCreatedConsumer(EventNotificationProcessor processor) :
                 .Select(zone => new EventCreatedZoneNotification(zone.Name, zone.Price, zone.Capacity))
                 .ToArray());
 
-        return processor.ProcessAsync(notification, context.CancellationToken);
+        using (logger.BeginScope(new Dictionary<string, object>
+               {
+                   ["correlationId"] = message.CorrelationId,
+                   ["messageId"] = message.MessageId
+               }))
+        {
+            await processor.ProcessAsync(notification, context.CancellationToken);
+        }
     }
 }
 
