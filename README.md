@@ -62,7 +62,7 @@ Pendientes antes del cierre final:
 
 ## Cómo ejecutar
 
-> Comando validado con Docker Desktop en Windows. Compose aplica las migraciones al iniciar las APIs.
+> Comando validado con Docker Desktop en Windows desde un clon limpio del repositorio. Compose crea las bases y aplica las migraciones al iniciar las APIs.
 
 **Requisitos:** Docker Desktop o Podman Desktop. Opcional para desarrollo: .NET SDK 10 y Node.js 22.
 

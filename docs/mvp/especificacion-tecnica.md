@@ -763,7 +763,7 @@ ENTRYPOINT ["dotnet", "EventService.Api.dll"]
 
 ## 15. Definition of Done del MVP
 
-- [ ] Desde un clon limpio: `cp .env.example .env` y `docker compose up -d --build` levantan todo **sin pasos manuales adicionales**.
+- [x] Desde un clon limpio: `cp .env.example .env` y `docker compose up -d --build` levantan todo **sin pasos manuales adicionales**.
 - [x] El flujo de punta a punta funciona: formulario → 201 → mensaje en RabbitMQ → registro en `notifications_db` → correo en Mailpit.
 - [ ] La idempotencia, los reintentos y la DLQ se demuestran con el guion de §16.
 - [x] `dotnet test` y `npm test` pasan.
