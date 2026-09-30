@@ -1,6 +1,7 @@
 using Contracts.Events;
 using MassTransit;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NotificationService.Application;
 
 namespace NotificationService.Infrastructure.Messaging;
@@ -39,7 +40,15 @@ public sealed class EventCreatedConsumer(
 
 public sealed class EventCreatedConsumerDefinition : ConsumerDefinition<EventCreatedConsumer>
 {
-    public EventCreatedConsumerDefinition() => EndpointName = "notifications-event-created";
+    private readonly TimeSpan[] _retryIntervals;
+
+    public EventCreatedConsumerDefinition(IOptions<RabbitMqOptions> options)
+    {
+        EndpointName = "notifications-event-created";
+        _retryIntervals = options.Value.RetryIntervalsMilliseconds
+            .Select(interval => TimeSpan.FromMilliseconds(interval))
+            .ToArray();
+    }
 
     protected override void ConfigureConsumer(
         IReceiveEndpointConfigurator endpointConfigurator,
@@ -48,10 +57,7 @@ public sealed class EventCreatedConsumerDefinition : ConsumerDefinition<EventCre
     {
         endpointConfigurator.UseMessageRetry(retry =>
         {
-            retry.Intervals(
-                TimeSpan.FromSeconds(1),
-                TimeSpan.FromSeconds(5),
-                TimeSpan.FromSeconds(15));
+            retry.Intervals(_retryIntervals);
             retry.Ignore<ArgumentException>();
         });
     }

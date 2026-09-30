@@ -2,6 +2,7 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NotificationService.Application;
 using NotificationService.Infrastructure.Email;
 using NotificationService.Infrastructure.Messaging;
@@ -15,10 +16,12 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("NotificationsDb")
-            ?? throw new InvalidOperationException("ConnectionStrings:NotificationsDb is required.");
-
-        services.AddDbContext<NotificationsDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<NotificationsDbContext>(options =>
+        {
+            var connectionString = configuration.GetConnectionString("NotificationsDb")
+                ?? throw new InvalidOperationException("ConnectionStrings:NotificationsDb is required.");
+            options.UseNpgsql(connectionString);
+        });
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<INotificationUnitOfWork>(provider =>
             provider.GetRequiredService<NotificationsDbContext>());
@@ -34,10 +37,10 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddOptions<RabbitMqOptions>()
             .Bind(configuration.GetSection(RabbitMqOptions.SectionName))
+            .Validate(options => options.RetryIntervalsMilliseconds is { Length: > 0 } &&
+                                 options.RetryIntervalsMilliseconds.All(interval => interval > 0),
+                "At least one positive retry interval is required.")
             .ValidateOnStart();
-
-        var rabbitMq = configuration.GetSection(RabbitMqOptions.SectionName).Get<RabbitMqOptions>()
-            ?? new RabbitMqOptions();
 
         services.AddMassTransit(bus =>
         {
@@ -46,6 +49,7 @@ public static class DependencyInjection
             bus.AddConsumer<FaultEventCreatedConsumer, FaultEventCreatedConsumerDefinition>();
             bus.UsingRabbitMq((context, rabbit) =>
             {
+                var rabbitMq = context.GetRequiredService<IOptions<RabbitMqOptions>>().Value;
                 rabbit.Host(rabbitMq.Host, rabbitMq.Port, rabbitMq.VirtualHost, host =>
                 {
                     host.Username(rabbitMq.User);

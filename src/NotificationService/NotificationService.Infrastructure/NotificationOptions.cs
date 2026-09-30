@@ -8,6 +8,7 @@ public sealed class RabbitMqOptions
     public string VirtualHost { get; init; } = "/";
     public string User { get; init; } = "guest";
     public string Password { get; init; } = "guest";
+    public int[] RetryIntervalsMilliseconds { get; init; } = [];
 }
 
 public sealed class EmailOptions
