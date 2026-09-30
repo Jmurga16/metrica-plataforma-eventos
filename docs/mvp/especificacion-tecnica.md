@@ -56,7 +56,7 @@
 | Resiliencia | Reintentos de MassTransit + timeout de SMTP | Intervalos de 1 s, 5 s y 15 s; cola `_error` al agotarse |
 | Correo | **MailKit** | SMTP hacia Mailpit en local |
 | Logs / trazas | Logs estructurados + correlación del mensaje | OpenTelemetry/Jaeger queda como mejora opcional |
-| Pruebas | xUnit, Shouldly, NSubstitute, Vitest y Testing Library | Testcontainers y Test Harness quedan pendientes |
+| Pruebas | xUnit, Shouldly, Testcontainers, Vitest y Testing Library | Integración real con PostgreSQL, Redis y RabbitMQ |
 | BD | **PostgreSQL 17** | Una base por servicio: `events_db`, `notifications_db` |
 | Broker | **RabbitMQ 4** (con consola de administración) | |
 | Caché | **Redis 7** | |
@@ -743,12 +743,12 @@ ENTRYPOINT ["dotnet", "EventService.Api.dll"]
 | T03 | Unitaria (dominio) | Fecha pasada (con `FakeTimeProvider`) | `DomainException` `event.date_in_past` |
 | T04 | Unitaria (validador) | Capacidad 0, precio −1, nombre vacío | Un error por campo con su ruta (`zones[0].capacity`) |
 | T05 | Unitaria (dominio) | Publicar un evento que no está en `Draft` | `DomainException` `event.invalid_transition` |
-| T06 | Integración (API + Testcontainers) | `POST /events` válido con rol Admin | 201; 1 fila en `events`, N en `zones`, 1 en `outbox_message` |
+| T06 | Integración (API + Testcontainers) | `POST /events` válido con rol Admin | 201; 1 fila en `events`, N en `zones` y `EventCreated` recibido desde RabbitMQ después del commit |
 | T07 | Integración (API) | `POST /events` sin token / con rol User | 401 / 403 |
 | T08 | Integración (API) | `GET /events` dos veces, luego `POST`, luego `GET` | `MISS` → `HIT` → `MISS` |
 | T09 | Integración (API) | Excepción inesperada simulada | 500 ProblemDetails sin *stack trace* |
 | T10 | Integración (API) | 11 `POST` en 1 minuto con el mismo usuario | La petición 11 recibe 429 con `Retry-After` |
-| T11 | Consumidor (Test Harness) | `EventCreated` nuevo | Notificación `Sent`, `IEmailSender` llamado 1 vez |
+| T11 | Consumidor (RabbitMQ real) | `EventCreated` nuevo | Notificación `Sent`, `IEmailSender` llamado 1 vez |
 | T12 | Consumidor | Mismo `messageId` consumido 2 veces | 1 fila, 1 correo, métrica de duplicados = 1 |
 | T13 | Consumidor | SMTP falla siempre | 4 intentos (1 + 3 reintentos), `Fault<EventCreated>` publicado, estado `Failed` |
 | T14 | Consumidor | SMTP falla una vez y luego responde | Estado `Sent`, `attempts = 2` |

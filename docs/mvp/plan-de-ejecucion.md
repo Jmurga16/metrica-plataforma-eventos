@@ -30,7 +30,7 @@ El flujo principal del MVP, la infraestructura Compose, ambas APIs y el frontend
 |---|---|---|---|
 | 6. Seguridad | 1,5 h | JWT (validación + `dev-token`), políticas por rol, rate limiting, `IExceptionHandler`, Serilog con filtros de datos sensibles, `X-Correlation-Id` | T07, T09 y T10 en verde |
 | 7. Frontend | 2,5 h | Proyecto Vite + TS + Tailwind, selector de rol de demo, formulario con zonas dinámicas, validación Zod, estados de carga, error y éxito, mapeo de errores 400 | Registro exitoso desde el navegador; pruebas T15–T17 |
-| 8. Pruebas de integración | 1,5 h | Testcontainers (PostgreSQL, RabbitMQ, Redis) para T06 y T08; MassTransit Test Harness para T11–T14 | `dotnet test` en verde |
+| 8. Pruebas de integración | 1,5 h | Testcontainers (PostgreSQL, RabbitMQ, Redis) para T06, T08 y T11–T14 | `dotnet test` en verde |
 | 9. Contenedores y compose final | 1 h | Dockerfiles *multi-stage* sin root, servicios `api-event`, `api-notifications` y `web` con *healthchecks* y `depends_on` | `docker compose up -d --build` desde un **clon limpio** funciona |
 | 10. Documentación y cierre | 1 h | README final (ejecución, migraciones, seed, URLs, demo), revisión de `docs/` contra lo construido, capturas opcionales | Checklist de entrega (abajo) completo |
 | 11. Ensayo de la demo | 0,5 h | Recorrer el guion de §16 de la especificación | Sin sorpresas en la presentación |
@@ -41,7 +41,7 @@ Si el tiempo se acaba, se sacrifica en este orden (de lo menos a lo más valioso
 1. Jaeger / trazas exportadas (se mantienen los logs con `correlationId`).
 2. `POST /events/{id}/publish` y `EventPublished`.
 3. `Idempotency-Key` en `POST /events`.
-4. Pruebas de integración con Testcontainers (se mantienen las unitarias y el Test Harness del consumidor).
+4. Pruebas de integración con Testcontainers (se mantienen también las pruebas unitarias del consumidor).
 5. Rate limiting.
 
 **Nunca se recorta:** outbox, idempotencia del consumidor, reintentos + DLQ, caché en `GET /events`, validación del frontend, Dockerfiles, compose ni README.

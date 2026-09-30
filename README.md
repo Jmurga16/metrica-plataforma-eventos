@@ -54,11 +54,9 @@ flowchart LR
 
 El flujo principal está operativo: formulario → `POST /events` → PostgreSQL + outbox → RabbitMQ → NotificationService → PostgreSQL → correo en Mailpit. También están verificados JWT por roles, validación, caché Redis (`MISS` → `HIT`), migraciones automáticas y health checks.
 
-Pendientes antes del cierre final:
-
-- pruebas de integración de EventService con infraestructura real o Testcontainers;
-- prueba automatizada de reintentos y envío a la cola `_error`;
-- OpenTelemetry/Jaeger y datos de ejemplo, ambos opcionales para el reto.
+El cierre técnico incluye pruebas de integración con Testcontainers para EventService,
+pruebas reales de idempotencia/reintentos/DLQ, pruebas HTTP de NotificationService y CI para backend y frontend.
+OpenTelemetry/Jaeger y los datos de ejemplo permanecen fuera del alcance acordado por ser mejoras opcionales.
 
 ## Cómo ejecutar
 
