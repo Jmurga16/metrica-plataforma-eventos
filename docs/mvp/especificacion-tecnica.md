@@ -47,16 +47,16 @@
 | Capa | Tecnología | Nota |
 |---|---|---|
 | Runtime | **.NET 10 (LTS)**, C# 14 | Si hay restricciones, .NET 9 también cumple el reto |
-| API | ASP.NET Core Minimal APIs + OpenAPI nativo + Scalar UI | `/openapi/v1.json`, `/scalar/v1` (solo Development) |
+| API | ASP.NET Core Minimal APIs + OpenAPI nativo; Scalar UI en EventService | `/openapi/v1.json`; `/scalar/v1` en EventService (solo Development) |
 | ORM | EF Core 10 + `Npgsql.EntityFrameworkCore.PostgreSQL` | Migraciones como fuente de verdad del esquema |
 | Mensajería | **MassTransit 8.x** + RabbitMQ | Outbox de EF Core, reintentos, cola de error. v8 con licencia Apache 2.0 (ADR-011) |
-| Casos de uso | MediatR **12.x** + FluentValidation | *Pipeline behavior* de validación y de logging |
+| Casos de uso | Servicios de aplicación explícitos + FluentValidation | Menos infraestructura accidental para el alcance del MVP; handlers simples y testeables |
 | Mapeo | Manual (métodos de extensión) | Sin AutoMapper (ADR-011) |
 | Caché | StackExchange.Redis | Cache-aside con invalidación por versión |
-| Resiliencia | `Microsoft.Extensions.Http.Resilience` (Polly v8) + `ResiliencePipeline` para SMTP | *Timeout* y reintento en llamadas salientes |
+| Resiliencia | Reintentos de MassTransit + timeout de SMTP | Intervalos de 1 s, 5 s y 15 s; cola `_error` al agotarse |
 | Correo | **MailKit** | SMTP hacia Mailpit en local |
-| Logs / trazas | Serilog (JSON) + OpenTelemetry (OTLP) | Jaeger opcional |
-| Pruebas | xUnit, Shouldly, NSubstitute, Testcontainers, MassTransit Test Harness | |
+| Logs / trazas | Logs estructurados + correlación del mensaje | OpenTelemetry/Jaeger queda como mejora opcional |
+| Pruebas | xUnit, Shouldly, NSubstitute, Vitest y Testing Library | Testcontainers y Test Harness quedan pendientes |
 | BD | **PostgreSQL 17** | Una base por servicio: `events_db`, `notifications_db` |
 | Broker | **RabbitMQ 4** (con consola de administración) | |
 | Caché | **Redis 7** | |
@@ -70,9 +70,8 @@
 
 ```text
 .
-├── EventsPlatform.slnx
+├── Metrica.slnx
 ├── Directory.Build.props            # net10.0, Nullable, TreatWarningsAsErrors, analizadores
-├── Directory.Packages.props         # Versiones centralizadas de NuGet
 ├── docker-compose.yml
 ├── .env.example                     # Variables de entorno (sin secretos reales)
 ├── db/
@@ -122,7 +121,7 @@ flowchart LR
 | **Domain** | `Event` (raíz de agregado), `Zone`, *value objects*, `EventStatus`, `DomainException` | Nada (ni EF, ni MassTransit, ni ASP.NET) |
 | **Application** | `CreateEventCommand` y su *handler*, `GetEventsQuery`, `GetEventByIdQuery`, validadores, DTOs, puertos (`IEventRepository`, `IUnitOfWork`, `IEventsCache`, `IIntegrationEventPublisher`) | Infrastructure, Api |
 | **Infrastructure** | `EventsDbContext`, configuraciones y migraciones EF, repositorios, adaptador de MassTransit, caché Redis, `TimeProvider` | Api |
-| **Api** | Endpoints, autenticación y autorización, `IExceptionHandler`, rate limiting, health checks, OpenTelemetry, *composition root* | — |
+| **Api** | Endpoints, autenticación y autorización, manejo seguro de errores, rate limiting, health checks y *composition root* | — |
 
 > Se recomienda un proyecto de pruebas de arquitectura (NetArchTest o ArchUnitNET) que falle si Domain referencia a EF Core o si Application referencia a Infrastructure.
 
@@ -595,7 +594,7 @@ dotnet ef migrations script --idempotent \
   -p src/EventService/EventService.Infrastructure -s src/EventService/EventService.Api -o db/scripts/events_db.sql
 ```
 
-**Seed:** se usa `UseAsyncSeeding` de EF Core (solo en `Development`, cuando la tabla está vacía) para cargar 3 eventos de ejemplo con zonas. Así `GET /events` muestra datos desde el primer arranque.
+**Datos iniciales:** no se cargan eventos automáticamente. Las bases y usuarios se crean con `db/init.sql`; las tablas se crean con migraciones EF. Los eventos de demostración se registran desde el frontend o la API.
 
 ---
 
@@ -620,11 +619,11 @@ dotnet ef migrations script --idempotent \
 
 | Señal | Implementación |
 |---|---|
-| Logs | Serilog en JSON a consola, enriquecido con `service`, `environment`, `traceId`, `spanId` y `correlationId` |
-| Correlación | Middleware que lee o genera `X-Correlation-Id`, lo agrega al `LogContext` y a la respuesta, y lo pasa al mensaje. El consumidor lo restaura desde el mensaje |
-| Trazas | OpenTelemetry: ASP.NET Core, HttpClient, Npgsql, `MassTransit` (ActivitySource). Exportador OTLP a Jaeger (perfil `observability` de docker-compose) |
-| Métricas | Runtime, ASP.NET Core y MassTransit. Métricas propias: `events_created_total`, `cache_hits_total`, `cache_misses_total`, `notifications_sent_total`, `notifications_failed_total`, `notifications_duplicates_total` |
-| Health | `/health/live` (proceso) y `/health/ready` (PostgreSQL, RabbitMQ, Redis y SMTP en notifications). Se usan en los `healthcheck` de docker-compose |
+| Logs | Ambas APIs escriben JSON con Serilog y propiedades estructuradas; no se registran cuerpos, tokens ni credenciales |
+| Correlación | EventService lee o genera `X-Correlation-Id`, lo devuelve y lo incluye en `EventCreated`; NotificationService lo agrega al alcance de logs del consumidor y maneja la cabecera en HTTP |
+| Trazas | OpenTelemetry y exportación OTLP a Jaeger quedan como mejora opcional |
+| Métricas | Las métricas propias quedan como mejora opcional; el MVP expone logs y health checks |
+| Health | Ambas APIs exponen `/health/live` y `/health/ready`; EventService comprueba PostgreSQL y NotificationService comprueba PostgreSQL y SMTP |
 
 ---
 
@@ -695,7 +694,6 @@ frontend/web-admin/
 | api-notifications | http://localhost:5002/scalar/v1 |
 | RabbitMQ Management | http://localhost:15672 |
 | Mailpit (correos) | http://localhost:8025 |
-| Jaeger | http://localhost:16686 |
 
 ### 13.3 Variables de entorno (`.env.example`)
 
@@ -719,7 +717,7 @@ frontend/web-admin/
 ```dockerfile
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY Directory.Build.props Directory.Packages.props ./
+COPY Directory.Build.props ./
 COPY src/BuildingBlocks/ src/BuildingBlocks/
 COPY src/EventService/ src/EventService/
 RUN dotnet publish src/EventService/EventService.Api -c Release -o /app/publish
@@ -766,13 +764,13 @@ ENTRYPOINT ["dotnet", "EventService.Api.dll"]
 ## 15. Definition of Done del MVP
 
 - [ ] Desde un clon limpio: `cp .env.example .env` y `docker compose up -d --build` levantan todo **sin pasos manuales adicionales**.
-- [ ] El flujo de punta a punta funciona: formulario → 201 → mensaje en RabbitMQ → registro en `notifications_db` → correo en Mailpit.
+- [x] El flujo de punta a punta funciona: formulario → 201 → mensaje en RabbitMQ → registro en `notifications_db` → correo en Mailpit.
 - [ ] La idempotencia, los reintentos y la DLQ se demuestran con el guion de §16.
-- [ ] `dotnet test` y `npm test` pasan.
-- [ ] El README tiene instrucciones de ejecución, migraciones, seed, URLs y credenciales de demo.
-- [ ] No hay secretos reales en el repositorio; `.env` está en `.gitignore`.
-- [ ] Los logs son JSON con `correlationId` en ambos servicios y no contienen tokens ni PII.
-- [ ] La documentación (`docs/`) coincide con lo implementado.
+- [x] `dotnet test` y `npm test` pasan.
+- [x] El README tiene instrucciones de ejecución, migraciones, estrategia de datos iniciales, URLs y credenciales de demo.
+- [x] No hay secretos reales en el repositorio; `.env` está en `.gitignore`.
+- [x] Los logs son JSON con `correlationId` en ambos servicios y no contienen tokens ni PII.
+- [x] La documentación (`docs/`) identifica el estado implementado y los pendientes.
 
 ---
 

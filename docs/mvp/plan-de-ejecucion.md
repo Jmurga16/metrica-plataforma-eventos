@@ -3,6 +3,10 @@
 > Orden de construcción recomendado para el MVP. El objetivo es tener **un flujo de punta a punta funcionando al final del día 1** e invertir el día 2 en seguridad, frontend, pruebas y pulido.
 > Diseño detallado: [especificacion-tecnica.md](especificacion-tecnica.md).
 
+## Estado al 30 de septiembre de 2026
+
+El flujo principal del MVP, la infraestructura Compose, ambas APIs y el frontend están implementados. Las pruebas actuales pasan y el recorrido evento → outbox → RabbitMQ → notificación → Mailpit fue validado. Quedan como cierre prioritario las pruebas automatizadas de integración de EventService y la demostración reproducible de reintentos/DLQ. OpenTelemetry/Jaeger y el seed son mejoras opcionales.
+
 ## Principios
 1. **Primero el esqueleto que camina:** el flujo completo mínimo (POST → cola → consumidor → BD → correo) antes de refinar cualquier parte.
 2. **Commits pequeños y frecuentes** con Conventional Commits (`feat(event-service): ...`) para que la historia del repositorio muestre el proceso.
@@ -44,12 +48,12 @@ Si el tiempo se acaba, se sacrifica en este orden (de lo menos a lo más valioso
 
 ## Checklist de entrega
 
-- [ ] Repositorio público (o con acceso otorgado) en GitHub, GitLab o Bitbucket.
-- [ ] `docs/architecture.md` con diagramas, lista de microservicios, flujos sync/async, seguridad y sustentación.
-- [ ] `docs/backlog/Backlog-Roadmap-Plataforma-Eventos.xlsx` + `docs/backlog-roadmap.md`.
-- [ ] Código de `src/` (2 APIs) y `frontend/web-admin`.
-- [ ] `db/init.sql` + migraciones EF + scripts idempotentes en `db/scripts/`.
-- [ ] `Dockerfile` por API y para el frontend; `docker-compose.yml` en la raíz.
-- [ ] README con instrucciones de ejecución, migración y seed.
-- [ ] `.env.example` sin secretos reales.
-- [ ] Pruebas en verde.
+- [x] Repositorio público (o con acceso otorgado) en GitHub, GitLab o Bitbucket.
+- [x] `docs/architecture.md` con diagramas, lista de microservicios, flujos sync/async, seguridad y sustentación.
+- [x] `docs/backlog/Backlog-Roadmap-Plataforma-Eventos.xlsx` + `docs/backlog-roadmap.md`.
+- [x] Código de `src/` (2 APIs) y `frontend/web-admin`.
+- [x] `db/init.sql` + migraciones EF + scripts idempotentes en `db/scripts/`.
+- [x] `Dockerfile` por API y para el frontend; `docker-compose.yml` en la raíz.
+- [x] README con instrucciones de ejecución, migración y estrategia de datos iniciales.
+- [x] `.env.example` sin secretos reales.
+- [x] Pruebas actuales en verde.
