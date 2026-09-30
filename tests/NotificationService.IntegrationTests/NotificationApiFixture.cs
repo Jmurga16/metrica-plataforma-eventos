@@ -25,6 +25,9 @@ public sealed class NotificationApiFixture : IAsyncLifetime
     public IServiceProvider Services =>
         (_factory ?? throw new InvalidOperationException("Fixture was not initialized.")).Services;
 
+    public HttpClient Client => (_factory ?? throw new InvalidOperationException("Fixture was not initialized."))
+        .CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
     public ControlledEmailSender EmailSender => Services.GetRequiredService<ControlledEmailSender>();
 
     public string RabbitMqManagementUrl =>
